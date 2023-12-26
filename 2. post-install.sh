@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# RUN AFTER ARCH-CHROOT
+# RUN WHEN YOU'RE ON CHROOT
 
 # TODO:
 #   - Set users and sudo config
@@ -10,7 +10,7 @@
 
 set_time() {
     ln -sf /usr/share/zoneinfo/America/Maceio /etc/localtime
-    # hwclock --systohc # It may conflict dual booting with windows, check the arch wiki dualboot
+    # hwclock --systohc !!! IT MAY CONFLICT DUAL BOOTING WITH WINDOWS, CHECK THE ARCH WIKI DUALBOOT !!!
     systemctl enable systemd-timesyncd.service
 }
 
@@ -62,10 +62,34 @@ set_internet() {
     echo "Firewall enabled"
 }
 
+install_grub() {
+    pacman -S --noconfirm --needed grub efibootmgr
+    grub-install --target=x86_64-efi --efi-directory=/efi --bootloader-id=GRUB
+    # Set linux as the main kernel, so it won't boot using the lts kernel by default
+    sed -i -e '3iGRUB_TOP_LEVEL="/boot/vmlinuz-linux"\' /etc/default/grub
+    grub-mkconfig -o /boot/grub/grub.cfg
+}
+
+set_snapshots(){
+    #TODO
+}
+
+set_apparmor() {
+    pacman -S --noconfirm --needed apparmor
+    systemctl enable apparmor.service
+    # Load apparmor in the kernel
+    sed -i '/GRUB_CMDLINE_LINUX_DEFAULT/ s/^\(.*\)\("\)/\1 apparmor=1 security=apparmor\2/' /etc/default/grub
+    grub-mkconfig -o /boot/grub/grub.cfg
+}
+
 main() {
     set_time
     set_language
     set_pacman
     set_bluetooth
     set_internet
+    install_grub
+    set_snapshots
+    set_apparmor
 }
+main
